@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>d20</title>
+<style>
+  @font-face {
+    font-family: "Cinzel";
+    src: url("assets/Cinzel.ttf") format("truetype");
+    font-weight: 400 700;
+    font-display: swap;
+  }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #120c09;
+    color: #f3ead7;
+    font-family: Cinzel, "Times New Roman", serif;
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  .vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 40%, transparent 42%, rgba(0, 0, 0, 0.5) 100%);
+  }
+  .bar {
+    position: fixed;
+    top: 22px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    z-index: 2;
+  }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #ead9b4;
+    background: rgba(18, 10, 8, 0.45);
+    border: 1px solid rgba(214, 180, 110, 0.45);
+    border-radius: 999px;
+    padding: 10px 22px;
+    cursor: pointer;
+  }
+  button[aria-pressed="true"] {
+    background: #6e1422;
+    border-color: #f0d48a;
+    color: #fff6e4;
+  }
+  button:focus-visible {
+    outline: 2px solid #f0d48a;
+    outline-offset: 3px;
+  }
+  .mog {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    width: min(168px, 28vw);
+    aspect-ratio: 400 / 648;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(224, 190, 120, 0.75);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .mog img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 18%;
+    display: block;
+  }
+  .readout {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 5vh;
+    text-align: center;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .prompt {
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-size: 13px;
+    color: rgba(234, 214, 176, 0.8);
+  }
+  .nums {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.35em;
+    min-height: 1.1em;
+  }
+  .num {
+    font-size: clamp(72px, 11vw, 132px);
+    line-height: 0.9;
+    color: #f4efe4;
+    text-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  }
+  .num.crit { color: #f3d48a; }
+  .num.fail { color: #b7b0a4; }
+  .plus {
+    font-size: clamp(28px, 4vw, 42px);
+    color: rgba(234, 214, 176, 0.7);
+  }
+  .total {
+    margin-top: 6px;
+    letter-spacing: 0.24em;
+    font-size: 18px;
+    color: #e7d3a2;
+  }
+  .warn {
+    color: #ffb4a8;
+    letter-spacing: 0.14em;
+    font-size: 14px;
+  }
+  .vignette { z-index: 1; }
+  .card, .log {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    width: min(420px, 92vw);
+    box-sizing: border-box;
+    background: rgba(18, 10, 8, 0.92);
+    border: 1px solid rgba(214, 180, 110, 0.5);
+    border-radius: 16px;
+    color: #f3ead7;
+    pointer-events: auto;
+  }
+  .card[hidden], .log[hidden] { display: none; }
+  .card {
+    left: 18px;
+    bottom: 18px;
+    transform: none;
+    width: min(300px, 86vw);
+    padding: 14px 16px 16px;
+    text-align: left;
+  }
+  .card p, .log h2 {
+    margin: 0;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(234, 214, 176, 0.9);
+  }
+  .card .rollline {
+    margin-top: 8px;
+    letter-spacing: 0.08em;
+    text-transform: none;
+    font-size: 28px;
+    color: #f4efe4;
+  }
+  .card input {
+    font-family: inherit;
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 12px 0;
+    padding: 8px 10px;
+    color: #fff6e4;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(214, 180, 110, 0.45);
+    border-radius: 8px;
+  }
+  .card .actions, .log .actions { display: flex; gap: 8px; justify-content: flex-start; }
+  .log .actions { justify-content: center; }
+  .card input::placeholder { color: rgba(234, 214, 176, 0.45); }
+  .card input:focus { outline: 2px solid #f0d48a; outline-offset: 1px; }
+  .log {
+    top: auto;
+    bottom: 18px;
+    left: auto;
+    right: 18px;
+    transform: none;
+    width: min(340px, 42vw);
+    max-height: 240px;
+    padding: 14px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .log ul {
+    list-style: none;
+    margin: 12px 0;
+    padding: 0;
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .log li, .log .empty {
+    margin: 0;
+    padding: 8px 2px;
+    border-top: 1px solid rgba(214, 180, 110, 0.2);
+    letter-spacing: 0.03em;
+    text-transform: none;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+  @media (max-width: 720px) {
+    .mog { width: 64px; top: 8px; left: 8px; }
+    .bar { top: 12px; }
+    button { padding: 8px 14px; letter-spacing: 0.14em; }
+    .log { left: 50%; right: auto; bottom: auto; top: 64px; transform: translateX(-50%); width: min(420px, 92vw); max-height: 40vh; }
+  }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <button type="button" id="one" aria-pressed="true">One</button>
+    <button type="button" id="two" aria-pressed="false">Two</button>
+    <button type="button" id="log" aria-pressed="false" aria-controls="log-panel">Log</button>
+  </div>
+  <div class="mog"><img id="mog" alt="" src="assets/mog-idle.jpg"></div>
+  <div class="readout">
+    <div class="prompt" id="prompt">Click the die</div>
+    <div class="nums" id="nums"></div>
+    <div class="total" id="total"></div>
+    <div class="warn" id="warn" hidden>The face on top does not match the number.</div>
+  </div>
+  <form class="card" id="save-card" hidden>
+    <p>Save this roll</p>
+    <p class="rollline" id="save-roll"></p>
+    <input id="save-name" name="name" type="text" maxlength="40" autocomplete="off" placeholder="Name" aria-label="Name">
+    <div class="actions">
+      <button type="submit">Save</button>
+      <button type="button" id="save-close">Close</button>
+    </div>
+  </form>
+  <div class="log" id="log-panel" hidden role="dialog" aria-label="Saved rolls">
+    <h2>Saved rolls</h2>
+    <ul id="log-list"></ul>
+    <p class="empty" id="log-empty" hidden>No saved rolls.</p>
+    <div class="actions">
+      <button type="button" id="log-close">Close</button>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <div id="preload" hidden>
+    <img src="assets/wood.jpg" alt="">
+    <img src="assets/mog-cheer.jpg" alt="">
+    <img src="assets/mog-sad.jpg" alt="">
+  </div>
+  <script src="vendor/three.min.js"></script>
+  <script src="js/die-data.js"></script>
+  <script src="js/log.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
