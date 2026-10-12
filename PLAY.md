@@ -8,10 +8,12 @@ The page does not call a model and does not ask for an account. A finished roll 
 
 ```bash
 cd /home/providence779/ani-online/d20-kupo
-python3 -m http.server 8099 --bind 127.0.0.1
+python3 tools/serve.py
 ```
 
 Then open http://127.0.0.1:8099/
+
+That server keeps one shared list in `saves/rolls.json` on this machine. Anyone who opens the page through it, including through the Cloudflare hostname pointed at port 8099, sees the same names. The file is not in git. Rows older than three days are removed when the list is opened or a roll is saved. The computer has to be on. A page opened any other way keeps a private list in that browser only.
 
 **One**, **Two**, and **Log** sit at the top. One and Two choose how many dice are on the table. Click a die to roll. With two dice, either die starts both. A click during a tumble does nothing. The big number under the table is the face that landed up. With two dice, the sum appears once both have stopped.
 

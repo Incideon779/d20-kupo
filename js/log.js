@@ -1,9 +1,20 @@
-/* Saved rolls for this browser. A published grok.me app keeps the same
-   row shape in its database so everyone with the link sees one list. */
+/* Shared rolls live in saves/rolls.json when this page is served by tools/serve.py.
+   Any other copy keeps the list in this browser only. */
 (function () {
   const KEY = "d20-kupo-log";
   const MAX_AGE = 3 * 24 * 60 * 60 * 1000;
   const MAX_NAME = 40;
+  let mode = "local";
+
+  const ready = fetch("/api/rolls", { headers: { Accept: "application/json" } })
+    .then(function (res) {
+      if (!res.ok) return null;
+      return res.json();
+    })
+    .then(function (body) {
+      if (body && Array.isArray(body.rows)) mode = "server";
+    })
+    .catch(function () {});
 
   function load() {
     try {
@@ -55,30 +66,53 @@
     }).format(d);
   }
 
+  function sortNewest(rows) {
+    return rows.slice().sort(function (a, b) {
+      return Date.parse(b.rolledAt) - Date.parse(a.rolledAt);
+    });
+  }
+
   window.RollLog = {
     maxName: MAX_NAME,
     list: function () {
-      const rows = fresh(load());
-      write(rows);
-      rows.sort(function (a, b) { return Date.parse(b.rolledAt) - Date.parse(a.rolledAt); });
-      return rows;
+      return ready.then(function () {
+        if (mode !== "server") return sortNewest(fresh(load()));
+        return fetch("/api/rolls").then(function (res) {
+          if (!res.ok) return [];
+          return res.json();
+        }).then(function (body) {
+          return sortNewest((body && body.rows) || []);
+        });
+      });
     },
-    save: function (name, dice, rolledAt) {
+    save: function (name, dice) {
       const trimmed = String(name || "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
-      const faces = facesOf(dice);
-      if (!trimmed || !faces.length) return null;
-      const when = rolledAt || new Date().toISOString();
-      if (Number.isNaN(Date.parse(when))) return null;
-      const row = {
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-        name: trimmed,
-        rolledAt: new Date(when).toISOString(),
-        dice: faces.slice(0, 2),
-      };
-      const rows = fresh(load());
-      rows.push(row);
-      write(rows);
-      return row;
+      const faces = facesOf(dice).slice(0, 2);
+      if (!trimmed || !faces.length) return Promise.resolve(null);
+      return ready.then(function () {
+        if (mode !== "server") {
+          const row = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+            name: trimmed,
+            rolledAt: new Date().toISOString(),
+            dice: faces,
+          };
+          const rows = fresh(load());
+          rows.push(row);
+          write(rows);
+          return row;
+        }
+        return fetch("/api/rolls", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: trimmed, dice: faces }),
+        }).then(function (res) {
+          if (!res.ok) return null;
+          return res.json();
+        }).then(function (body) {
+          return body && body.row ? body.row : null;
+        });
+      });
     },
     label: function (row) {
       return row.name + " — " + rollText(row) + " — " + formatCentral(row.rolledAt);

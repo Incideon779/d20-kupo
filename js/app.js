@@ -412,13 +412,14 @@
   function renderLog() {
     const list = document.getElementById("log-list");
     const empty = document.getElementById("log-empty");
-    const rows = window.RollLog.list();
-    list.replaceChildren();
-    empty.hidden = rows.length > 0;
-    rows.forEach(function (row) {
-      const li = document.createElement("li");
-      li.textContent = window.RollLog.label(row);
-      list.appendChild(li);
+    window.RollLog.list().then(function (rows) {
+      list.replaceChildren();
+      empty.hidden = rows.length > 0;
+      rows.forEach(function (row) {
+        const li = document.createElement("li");
+        li.textContent = window.RollLog.label(row);
+        list.appendChild(li);
+      });
     });
   }
 
@@ -431,10 +432,12 @@
   saveCard.addEventListener("submit", function (e) {
     e.preventDefault();
     if (!pendingSave) return;
-    const row = window.RollLog.save(saveName.value, pendingSave.dice, pendingSave.rolledAt);
-    if (!row) return;
-    hideSave();
-    if (!logPanel.hidden) renderLog();
+    const snap = pendingSave;
+    window.RollLog.save(saveName.value, snap.dice).then(function (row) {
+      if (!row) return;
+      hideSave();
+      if (!logPanel.hidden) renderLog();
+    });
   });
   document.getElementById("save-close").addEventListener("click", hideSave);
   logBtn.addEventListener("click", function () { setLogOpen(logPanel.hidden); });
